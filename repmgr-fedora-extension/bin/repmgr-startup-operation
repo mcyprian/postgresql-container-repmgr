@@ -1,0 +1,10 @@
+#!/bin/bash
+
+source "$CONTAINER_SCRIPTS_PATH"/common.sh
+source "${APP_DATA}/src/postgresql-pre-start/common.sh"
+
+set -eu
+
+rempgr_startup_operation_retry
+sleep 3
+exec repmgrd

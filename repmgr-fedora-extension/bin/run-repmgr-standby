@@ -1,0 +1,29 @@
+#!/bin/bash
+
+set -eu
+
+export_vars=$(cgroup-limits) ; export $export_vars
+
+source "$CONTAINER_SCRIPTS_PATH"/common.sh
+source "${APP_DATA}/src/postgresql-pre-start/common.sh"
+
+set_pgdata
+
+function initialize_replica_repmgr () {
+  echo "Initializing PostgreSQL standby..."
+  repmgr -h postgresql-primary -U repmgr -d repmgr -f /etc/repmgr.conf standby clone
+}
+
+check_env_vars    
+generate_passwd_file    
+generate_postgresql_config
+
+wait_for_postgresql_master_repmgr
+export MASTER_FQDN=$(postgresql_master_addr)
+initialize_replica_repmgr
+
+unset_env_vars
+echo "Starting server..."
+
+repmgr-startup-operation &
+exec postgres "$@"

@@ -1,0 +1,31 @@
+#!/bin/bash
+
+export ENABLE_REPLICATION=true
+
+source "$CONTAINER_SCRIPTS_PATH"/common.sh
+source "${APP_DATA}/src/postgresql-pre-start/common.sh"
+
+echo "Initializing repmgr replica ..."
+
+export PGDATA=$HOME/data/userdata
+generate_repmgr_config
+
+# If this is the first initialization, node role is set in the STARTUP_OPERATION
+# variable, try to get current node role otherwise.
+if [ -f "$PGDATA/postgresql.conf" ]; then
+  DETECTED_STARTUP=$(get_startup_operation)
+fi
+
+if [ -z "$DETECTED_STARTUP" ]; then
+  DETECTED_STARTUP="$STARTUP_OPERATION"
+elif [ "$STARTUP_OPERATION" != "node rejoin" ]; then
+  STARTUP_OPERATION="$DETECTED_STARTUP"
+fi
+
+echo "Startup operation: $STARTUP_OPERATION."
+
+if [ "$DETECTED_STARTUP" = "primary register" ]; then
+  exec run-repmgr-primary "$@"
+else
+  exec run-repmgr-standby "$@"
+fi
